@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from data import BRAND, TAGLINE, BASE_URL, COURSES, BUNDLE, FAQ
 import svg
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-V = "3"
+V = "4"
 E = html.escape
 
 def rub(n): return f"{n:,}".replace(",", " ") + " ₽"
