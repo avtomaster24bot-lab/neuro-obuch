@@ -110,3 +110,6 @@ footer a{color:var(--txt);opacity:.8;display:block;margin-bottom:6px}
 .steps4{counter-reset:s}.steps4 .card:before{counter-increment:s;content:"0" counter(s);font:700 30px var(--hf);background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent;display:block;margin-bottom:6px}
 .tariff.hot{border-color:rgba(34,211,238,.6);box-shadow:0 0 0 1px rgba(34,211,238,.3),0 30px 60px -30px rgba(34,211,238,.6)}
 .tariff .big{font:700 30px var(--hf);margin:8px 0}
+
+.funnel{margin:6px 0 20px;padding-left:22px}.funnel li{margin-bottom:8px}
+.pilot{border-color:rgba(34,211,238,.45)}.pilot-grid{display:grid;gap:22px;align-items:center}@media(min-width:860px){.pilot-grid{grid-template-columns:.9fr 1.1fr}}

@@ -2,22 +2,30 @@
 """Сборка сайта: python3 _src/build.py (из корня репозитория). Генерирует HTML-страницы и SVG-схемы."""
 import os, sys, json, html
 sys.path.insert(0, os.path.dirname(__file__))
-from data import BRAND, TAGLINE, BASE_URL, COURSES, BUNDLE, FAQ
+from data import BRAND, TAGLINE, BASE_URL, COURSES, FAQ
 import svg
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-V = "4"
+V = "6"
 E = html.escape
 
-def rub(n): return f"{n:,}".replace(",", " ") + " ₽"
+
+import re as _re
+_CFG = open(os.path.join(ROOT, "config.js"), encoding="utf-8").read()
+def _cfg(key):
+    m = _re.search(key + r'\s*:\s*"([^"]*)"', _CFG); return m.group(1) if m else ""
+LINKS = {"waitlist": _cfg("WAITLIST_URL"), "contact": _cfg("CONTACT_URL"), "channel": _cfg("TELEGRAM_CHANNEL_URL")}
 
 def write(path, s):
+    if path.endswith(".html"):
+        for k, u in LINKS.items():
+            if u: s = s.replace(f'data-link="{k}" href="#"', f'data-link="{k}" href="{u}" target="_blank" rel="noopener"')
     p = os.path.join(ROOT, path); os.makedirs(os.path.dirname(p), exist_ok=True)
     open(p, "w", encoding="utf-8").write(s)
 
 def page(path, title, desc, body, root, mbar=True, og="assets/img/hero.jpg"):
     url = BASE_URL + path.replace("index.html", "")
-    nav = f'''<a href="{root}kursy/">Курсы</a><a href="{root}urok/formula-prompta/">Бесплатный урок</a><a href="{root}novoe/">Новое каждый день</a><a href="{root}gaydy/">Гайды</a><a href="{root}#faq">Вопросы</a><a class="btn sm tg" data-link="channel" href="#">Telegram-канал</a>'''
-    mb = f'<div class="mbar"><a class="btn ghost" href="{root}urok/formula-prompta/">Бесплатный урок</a><a class="btn" href="{root}kursy/">Выбрать курс</a></div>' if mbar else ""
+    nav = f'''<a href="{root}kursy/">Курсы</a><a href="{root}urok/formula-prompta/">Бесплатный урок</a><a href="{root}novoe/">Новое каждый день</a><a href="{root}gaydy/">Гайды</a><a href="{root}#faq">Вопросы</a><a data-link="channel" href="#">Telegram-канал</a><a class="btn sm tg" data-link="waitlist" href="#">Написать «СТАРТ»</a>'''
+    mb = f'<div class="mbar"><a class="btn ghost" href="{root}urok/formula-prompta/">Бесплатный урок</a><a class="btn tg" data-link="waitlist" href="#">Написать «СТАРТ»</a></div>' if mbar else ""
     return f'''<!doctype html>
 <html lang="ru"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -42,9 +50,9 @@ def page(path, title, desc, body, root, mbar=True, og="assets/img/hero.jpg"):
 <p style="margin-top:12px">Учим пользоваться нейросетями с нуля до дохода: тексты, картинки, видео, голос, учёт и свои ИИ-помощники.</p>
 <div class="soc"><a data-link="channel" href="#">Telegram</a><a data-link="youtube" data-social href="#">YouTube</a><a data-link="instagram" data-social href="#">Instagram</a><a data-link="tiktok" data-social href="#">TikTok</a><a data-link="vk" data-social href="#">VK</a></div></div>
 <div><b style="color:var(--txt)">Курсы</b><br><br>{"".join(f'<a href="{root}kursy/{c["slug"]}/">{E(c["title"])}</a>' for c in COURSES[:4])}</div>
-<div><b style="color:var(--txt)">&nbsp;</b><br><br>{"".join(f'<a href="{root}kursy/{c["slug"]}/">{E(c["title"])}</a>' for c in COURSES[4:])}<a href="{root}kursy/#tarify">Тарифы</a></div>
-<div><b style="color:var(--txt)">Бесплатно</b><br><br><a href="{root}urok/formula-prompta/">Урок «Формула промпта»</a><a href="{root}gaydy/">Гайды PDF</a><a href="{root}novoe/">Новое каждый день</a><a data-link="contact" href="#">Написать нам</a></div>
-</div><div class="wrap"><p class="small" style="margin-top:26px">© 2026 {BRAND}. Цены на сайте предварительные, сайт не является публичной офертой. Названия сервисов принадлежат их владельцам; школа не аффилирована с ними. Доступность зарубежных сервисов зависит от страны.</p></div></footer>
+<div><b style="color:var(--txt)">&nbsp;</b><br><br>{"".join(f'<a href="{root}kursy/{c["slug"]}/">{E(c["title"])}</a>' for c in COURSES[4:])}<a href="{root}kursy/#zhdem">Лист ожидания</a></div>
+<div><b style="color:var(--txt)">Бесплатно</b><br><br><a href="{root}urok/formula-prompta/">Урок «Формула промпта»</a><a href="{root}gaydy/">Гайды PDF</a><a href="{root}novoe/">Новое каждый день</a><a data-link="contact" href="#">Написать нам: @GrifRift555</a></div>
+</div><div class="wrap"><p class="small" style="margin-top:26px">© 2026 {BRAND}. Сейчас мы не продаём курсы и не берём предоплату — идёт набор в лист ожидания пилотного практикума. Сайт не является публичной офертой. Названия сервисов принадлежат их владельцам; школа не аффилирована с ними. Доступность зарубежных сервисов зависит от страны.</p></div></footer>
 {mb}
 <script src="{root}config.js?v={V}"></script><script src="{root}assets/js/app.js?v={V}"></script>
 </body></html>'''
@@ -53,18 +61,40 @@ def ccard(c, root):
     return f'''<a class="card ccard glow reveal" href="{root}kursy/{c["slug"]}/"><img src="{root}assets/img/{c["img"]}.webp" alt="Иллюстрация к курсу «{E(c["title"])}»" loading="lazy" width="1152" height="864">
 <div class="body"><div class="meta"><span class="tag">{c["level"]}</span><span class="tag">{c["weeks"]} нед.</span><span class="tag">{c["lessons"]} уроков</span></div>
 <h3>{E(c["title"])}</h3><p class="muted small">{E(c["short"])}</p>
-<div class="price">{rub(c["price"])}<span>Подробнее →</span></div></div></a>'''
+<div class="price"><span style="color:var(--txt);font:700 15px var(--bf)">{"🚀 Пилот · лист ожидания" if c["slug"]==PILOT else "⏳ Откроем по запросам"}</span><span>Подробнее →</span></div></div></a>'''
 
 def lead_block(root):
     return f'''<section id="gift"><div class="wrap"><div class="lm reveal">
-<div><span class="eyebrow">Подарок</span><h2>Напиши слово <span class="kw" data-keyword>ИИ</span> в Telegram —<br>пришлём «Карту нейросетей 2026»</h2>
-<p class="muted">35+ проверенных инструментов по задачам: тексты, картинки, видео, голос, таблицы и боты. Плюс 30 готовых промптов для контента. Подпишитесь на канал — каждый день там новая фишка ИИ с видео-инструкцией.</p>
-<div class="btns"><a class="btn tg" data-link="bot" href="#">Написать слово в Telegram</a><a class="btn ghost" data-link="channel" href="#">Подписаться на канал</a></div></div>
-<div class="card" style="background:rgba(0,0,0,.25)"><b>Или скачайте прямо сейчас:</b><br><br>
+<div><span class="eyebrow">Подарок</span><h2>Гайды бесплатно + новая фишка ИИ каждый день в Telegram</h2>
+<p class="muted">35+ проверенных инструментов по задачам: тексты, картинки, видео, голос, таблицы и боты. Плюс 30 готовых промптов для контента. Подпишитесь на канал @PostFlowFactory — там новые гайды и ежедневные разборы возможностей ИИ.</p>
+<div class="btns"><a class="btn tg" data-link="channel" href="#">Подписаться на канал</a></div></div>
+<div class="card" style="background:rgba(0,0,0,.25)"><b>Скачайте прямо сейчас:</b><br><br>
 <a class="btn sm block" href="{root}gaydy/karta-neyrosetey/">📘 Карта нейросетей 2026</a><br>
 <a class="btn sm ghost block" href="{root}gaydy/30-promptov/">✍️ 30 промптов для контента</a>
 <p class="small muted" style="margin:12px 0 0">Есть версия для чтения на телефоне и PDF для печати.</p></div>
 </div></div></section>'''
+
+PILOT = "s-nulya"
+
+def waitlist_block(root, title="Хотите в пилот «Нейросети с нуля»?"):
+    return f'''<section id="zhdem"><div class="wrap"><div class="lm reveal" style="background:radial-gradient(120% 140% at 100% 0%,rgba(42,171,238,.22),transparent 55%),linear-gradient(135deg,#101040,#0b0b26);border-color:rgba(42,171,238,.4)">
+<div><span class="eyebrow">Лист ожидания</span><h2>{title}</h2>
+<p class="muted">Первый набор — небольшой пилотный практикум, где каждый участник решает с ИИ свою реальную рабочую задачу. <b style="color:var(--txt)">Сейчас мы не продаём курсы и не берём предоплату</b> — просто запишитесь, и мы напишем, когда откроется набор.</p>
+<ol class="funnel"><li><b>Пройдите бесплатный урок</b> <a href="{root}urok/formula-prompta/">«Формула сильного промпта»</a> — 10 минут.</li><li><b>Напишите «СТАРТ»</b> в Telegram <a data-link="waitlist" href="#">@GrifRift555</a>.</li><li><b>Получите уведомление</b>, когда откроется набор в пилот.</li></ol>
+<div class="btns"><a class="btn tg" data-link="waitlist" href="#">Написать «СТАРТ» в Telegram</a><a class="btn ghost" href="{root}urok/formula-prompta/">Бесплатный урок</a></div></div>
+<div class="card" style="background:rgba(0,0,0,.25)"><span class="eyebrow" style="margin-bottom:10px">Один вопрос</span><p style="font:600 19px/1.4 var(--hf);margin:0 0 12px">«Какую задачу ты хочешь научиться решать с нейросетью?»</p>
+<p class="small muted" style="margin:0">Этот вопрос мы зададим каждому, кто напишет «СТАРТ». Ответы определят, какие уроки войдут в пилот первыми, — так практикум собирается под ваши реальные задачи.</p></div>
+</div></div></section>'''
+
+def pilot_card(root):
+    c = next(x for x in COURSES if x["slug"] == PILOT)
+    return f'''<div class="card glow reveal pilot"><div class="pilot-grid"><img src="{root}assets/img/{c["img"]}.webp" alt="Иллюстрация к практикуму «Нейросети с нуля»" loading="lazy" width="1152" height="864" style="border-radius:16px">
+<div><span class="tag" style="background:rgba(34,211,238,.15);color:#7ee8fa;border-color:rgba(34,211,238,.4)">🚀 Пилот · набор в лист ожидания</span>
+<h3 style="font-size:clamp(22px,5vw,30px);margin-top:12px">Нейросети с нуля — практикум</h3>
+<p class="muted">{E(c["short"])}</p>
+<div class="meta" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"><span class="tag">2 недели</span><span class="tag">4 модуля</span><span class="tag">14 уроков</span><span class="tag">Небольшая группа</span></div>
+<ul class="check"><li>Каждый решает с ИИ свою реальную рабочую задачу</li><li>На выходе — готовое рабочее сообщение, чек-лист и шаблон запроса для своей задачи</li><li>Короткие текстовые уроки, разборы, схемы и задания в закрытом Telegram-канале с оглавлением</li><li>Ответы на вопрос «Какую задачу ты хочешь научиться решать с нейросетью?» определят, с каких примеров начнём</li><li>Предоплату не берём — сначала лист ожидания</li></ul><br>
+<div class="btns"><a class="btn tg" data-link="waitlist" href="#">Написать «СТАРТ»</a><a class="btn ghost" href="{root}kursy/{PILOT}/">Программа пилота</a></div></div></div></div>'''
 
 def faq_html(items):
     return "".join(f'<details class="faq"><summary>{E(q)}</summary><p>{E(a)}</p></details>' for q, a in items)
@@ -83,38 +113,40 @@ def home():
 <section class="hero"><div class="wrap hero-grid">
 <div><span class="eyebrow">Школа нейросетей · онлайн</span>
 <h1>Нейросети — <span class="grad">с нуля до дохода</span></h1>
-<p class="lead">Научим создавать контент, картинки, видео и голос с ИИ, вести учёт и автоматизировать бизнес, собрать своего ИИ-помощника. Простым языком, с картинками, аудио и новыми фишками каждый день.</p>
+<p class="lead">Научим создавать контент, картинки, видео и голос с ИИ, вести учёт и автоматизировать бизнес, собрать своего ИИ-помощника. Простым языком, со схемами, практикой и новыми фишками каждый день.</p>
 <div class="chips"><span class="chip">✍️ Тексты</span><span class="chip">🎨 Картинки</span><span class="chip">🎬 Видео</span><span class="chip">🎙️ Голос</span><span class="chip">📊 Учёт и таблицы</span><span class="chip">🤖 ИИ-боты</span></div>
-<div class="btns"><a class="btn" href="urok/formula-prompta/">Пройти бесплатный урок</a><a class="btn ghost" href="kursy/">Смотреть курсы</a></div>
+<div class="btns"><a class="btn" href="urok/formula-prompta/">Пройти бесплатный урок</a><a class="btn tg" data-link="waitlist" href="#">Написать «СТАРТ»</a></div>
+<p class="small muted" style="margin:14px 0 0">Сейчас идёт запись в лист ожидания пилота. Предоплату не берём.</p>
 <div class="stats"><div class="stat"><b>7</b><span>направлений обучения</span></div><div class="stat"><b>120+</b><span>уроков в программах</span></div><div class="stat"><b>ежедневно</b><span>новые возможности ИИ</span></div></div>
 </div>
 <div class="hero-img"><img src="assets/img/hero.webp" alt="Нейросеть над ноутбуком: текст, картинки, видео, звук и таблицы" width="1280" height="720" fetchpriority="high"></div>
 </div></section>
 
 <section style="padding-top:0"><div class="wrap"><div class="audio reveal">
-<div class="wave">🎧</div><div><h3 style="margin-bottom:4px">Аудио-презентация школы · 1,5 минуты</h3>
+<div class="wave">🎧</div><div><h3 style="margin-bottom:4px">Аудио-презентация школы · 2 минуты</h3>
 <p class="muted small" style="margin:0">Послушайте, чему и как мы учим, — можно в дороге. Голос синтезирован нейросетью, как и всё, чему вы научитесь.</p>
 <audio controls preload="none" src="assets/audio/prezentaciya.mp3"></audio></div></div></div></section>
 
 <section><div class="wrap"><div class="sec-head"><span class="eyebrow">О чём многие не знают</span><h2>ИИ умеет гораздо больше, чем «написать текст»</h2><p class="muted">Вот что вы будете делать уже после первых уроков — без программирования.</p></div>
 <div class="grid g3">{know_html}</div></div></section>
 
-<section id="kursy"><div class="wrap"><div class="sec-head"><span class="eyebrow">Направления</span><h2>Курсы-пакеты: выберите, с чего начать</h2><p class="muted">Каждый курс — это видео-уроки, пошаговые тексты с картинками, аудио-версии, шаблоны и домашние задания с разбором.</p></div>
-<div class="grid g3">{"".join(ccard(c, r) for c in COURSES)}
-<a class="card ccard glow reveal" href="kursy/#tarify" style="justify-content:center;padding:28px;background:linear-gradient(160deg,rgba(139,92,246,.25),rgba(34,211,238,.12))"><span class="eyebrow" style="align-self:flex-start">Выгодно</span><h3 style="font-size:24px">{BUNDLE["title"]}</h3><p class="muted">{BUNDLE["note"]}</p><div class="price" style="border:0">{rub(BUNDLE["price"])}<span>Тарифы →</span></div></a>
-</div></div></section>
+<section id="kursy"><div class="wrap"><div class="sec-head"><span class="eyebrow">Первый набор</span><h2>Пилот: практикум «Нейросети с нуля»</h2><p class="muted">Начинаем с одного небольшого практикума. Каждый участник приходит со своей реальной рабочей задачей — и решает её с ИИ под присмотром.</p></div>
+{pilot_card(r)}</div></section>
+
+<section id="next"><div class="wrap"><div class="sec-head"><span class="eyebrow">Скоро</span><h2>Следующие программы — откроем по запросам</h2><p class="muted">Эти направления уже спроектированы. Какое откроется следующим, решают ответы тех, кто пишет «СТАРТ».</p></div>
+<div class="grid g3">{"".join(ccard(c, r) for c in COURSES if c["slug"] != PILOT)}</div></div></section>
 
 <section><div class="wrap"><div class="sec-head"><span class="eyebrow">Как проходит обучение</span><h2>Учиться легко, даже если вы «не технарь»</h2></div>
 <div class="grid g4 steps4">
-<div class="card reveal"><h3>Видео + текст + аудио</h3><p class="muted small" style="margin:0">Каждый урок в трёх форматах: смотрите, читайте со скриншотами или слушайте.</p></div>
-<div class="card reveal"><h3>Практика сразу</h3><p class="muted small" style="margin:0">После каждого урока — задание на 10–20 минут и готовые шаблоны промптов.</p></div>
-<div class="card reveal"><h3>Свежие фишки</h3><p class="muted small" style="margin:0">ИИ меняется каждую неделю — новые уроки добавляем в курс без доплаты.</p></div>
+<div class="card reveal"><h3>Короткие уроки</h3><p class="muted small" style="margin:0">Текстовые уроки со схемами и разборами — в закрытом Telegram-канале с оглавлением.</p></div>
+<div class="card reveal"><h3>Практика сразу</h3><p class="muted small" style="margin:0">После урока — практическое задание на своей рабочей задаче и шаблоны запросов.</p></div>
+<div class="card reveal"><h3>Свежие фишки</h3><p class="muted small" style="margin:0">ИИ меняется каждую неделю — новые уроки добавляем по мере появления новых возможностей.</p></div>
 <div class="card reveal"><h3>Сообщество</h3><p class="muted small" style="margin:0">Закрытый Telegram-чат, разборы работ и ответы на вопросы.</p></div>
 </div></div></section>
 
 <section><div class="wrap"><div class="lm reveal" style="background:linear-gradient(135deg,#101040,#0b0b26);border-color:rgba(34,211,238,.35)">
 <div><span class="eyebrow">Бесплатный урок</span><h2>Формула сильного промпта: первый пост с ИИ за 10 минут</h2>
-<p class="muted">Пошагово, с картинками и аудио. Оцените качество обучения до покупки — это урок из курса «Нейросети с нуля».</p>
+<p class="muted">Пошагово, со схемами и аудиоверсией. Это первый шаг в лист ожидания пилота «Нейросети с нуля»: пройдите урок и напишите «СТАРТ».</p>
 <a class="btn" href="urok/formula-prompta/">Открыть урок бесплатно →</a></div>
 <img src="assets/img/urok/formula.svg" alt="Схема: формула Р-З-К-Ф" loading="lazy" style="border-radius:16px">
 </div></div></section>
@@ -125,56 +157,70 @@ def home():
 
 {lead_block(r)}
 
-<section id="otzyvy"><div class="wrap"><div class="sec-head"><span class="eyebrow">Отзывы</span><h2>Здесь появятся отзывы первых учеников</h2><p class="muted">Мы не публикуем выдуманные отзывы. Ниже — макет того, как будут выглядеть настоящие отзывы после первого потока.</p></div>
-<div class="grid g3">{"".join(f'<div class="card reveal" style="opacity:.75"><span class="ph">ПРИМЕР</span><p>«Текст настоящего отзыва ученика появится здесь после первого потока курса «{E(c)}».»</p><p class="small muted" style="margin:0">Имя ученика · город · курс</p></div>' for c in ["Нейросети с нуля", "Контент и посты с ИИ", "ИИ для бизнеса"])}</div></div></section>
+{waitlist_block(r)}
 
 <section id="faq"><div class="wrap" style="max-width:820px"><div class="sec-head"><span class="eyebrow">Вопросы</span><h2>Частые вопросы</h2></div>{faq_html(FAQ)}</div></section>
 
 <section><div class="wrap" style="text-align:center;max-width:760px"><h2>Начните с бесплатного — <span class="grad">а дальше решите сами</span></h2>
-<p class="muted">Бесплатный урок, гайды и ежедневные фишки в Telegram. Когда будете готовы — выберите курс.</p>
-<div class="btns" style="justify-content:center"><a class="btn" href="urok/formula-prompta/">Бесплатный урок</a><a class="btn tg" data-link="channel" href="#">Telegram-канал</a></div></div></section>'''
+<p class="muted">Бесплатный урок → «СТАРТ» в Telegram → уведомление, когда откроется набор. Никаких оплат сейчас.</p>
+<div class="btns" style="justify-content:center"><a class="btn" href="urok/formula-prompta/">Бесплатный урок</a><a class="btn tg" data-link="waitlist" href="#">Написать «СТАРТ»</a><a class="btn ghost" data-link="channel" href="#">Telegram-канал</a></div></div></section>'''
     write("index.html", page("index.html", f"{BRAND} — школа нейросетей: от нуля до дохода", "Онлайн-школа нейросетей: контент, картинки, видео, голос, учёт и автоматизация бизнеса, свои ИИ-боты. Бесплатный урок, гайды и новые возможности ИИ каждый день.", body, ""))
 
 # ---------------- Каталог ----------------
 def catalog():
     r = "../"
-    tar = [("Самостоятельно", "Любой курс", "от " + rub(min(c["price"] for c in COURSES)), ["Все уроки курса: видео, текст, аудио", "Шаблоны и промпты", "Обновления курса 12 месяцев"], "default", False),
-           ("С куратором", "Курс + проверка заданий", "+40% к цене курса", ["Всё из тарифа «Самостоятельно»", "Проверка домашних заданий", "Закрытый чат с куратором", "Сертификат"], "default", True),
-           (BUNDLE["title"], "Все 7 направлений", rub(BUNDLE["price"]), ["Все курсы школы", "Куратор и разборы работ", "Новые курсы без доплаты 12 месяцев", "Личная консультация по внедрению ИИ"], "bundle", False)]
-    th = "".join(f'''<div class="card tariff {"hot" if hot else ""} reveal">{'<span class="ph" style="color:#22d3ee;border-color:#22d3ee">ПОПУЛЯРНЫЙ</span>' if hot else ""}<h3>{t}</h3><p class="muted small">{s}</p><div class="big">{p}</div><ul class="check">{"".join(f"<li>{x}</li>" for x in li)}</ul><br><a class="btn block" data-link="pay" data-course="{k}" href="#">Оформить</a></div>''' for t, s, p, li, k, hot in tar)
     body = f'''<div class="wrap"><p class="crumbs"><a href="../">Главная</a> / Курсы</p></div>
-<section style="padding-top:26px"><div class="wrap"><div class="sec-head"><span class="eyebrow">Каталог</span><h1 style="font-size:clamp(26px,6vw,46px)">Курсы по нейросетям</h1><p class="muted">7 направлений — от первого запроса в чат-бот до собственного ИИ-ассистента для бизнеса. Не знаете, с чего начать? Начните с «Нейросети с нуля» или с <a href="../urok/formula-prompta/">бесплатного урока</a>.</p></div>
-<div class="grid g3">{"".join(ccard(c, r) for c in COURSES)}</div></div></section>
-<section id="tarify"><div class="wrap"><div class="sec-head"><span class="eyebrow">Тарифы</span><h2>Формат участия</h2><p class="note">Цены предварительные и могут измениться до старта продаж.</p></div><div class="grid g3">{th}</div></div></section>
+<section style="padding-top:26px"><div class="wrap"><div class="sec-head"><span class="eyebrow">Каталог</span><h1 style="font-size:clamp(26px,6vw,46px)">Программы школы</h1><p class="muted">Начинаем с пилотного практикума «Нейросети с нуля». Остальные направления откроем по запросам. Курсы сейчас не продаются и предоплату мы не берём — запишитесь в лист ожидания: пройдите <a href="../urok/formula-prompta/">бесплатный урок</a> и напишите «СТАРТ» в Telegram.</p></div>
+{pilot_card(r)}</div></section>
+<section style="padding-top:0"><div class="wrap"><div class="sec-head"><span class="eyebrow">Скоро</span><h2>Следующие программы — откроем по запросам</h2><p class="muted">Хотите одно из этих направлений? Напишите «СТАРТ» и в ответ на вопрос назовите свою задачу — так мы поймём, что открывать следующим.</p></div>
+<div class="grid g3">{"".join(ccard(c, r) for c in COURSES if c["slug"] != PILOT)}</div></div></section>
+{waitlist_block(r)}
 {lead_block(r)}'''
-    write("kursy/index.html", page("kursy/index.html", f"Курсы по нейросетям — {BRAND}", "Каталог курсов: нейросети с нуля, контент, картинки, видео, голос, ИИ для бизнеса и свой ИИ-бот. Тарифы и программы.", body, r))
+    write("kursy/index.html", page("kursy/index.html", f"Программы школы нейросетей — {BRAND}", "Пилотный практикум «Нейросети с нуля» и следующие направления: контент, картинки, видео, голос, ИИ для бизнеса, свой ИИ-бот. Запись в лист ожидания.", body, r))
 
 # ---------------- Страница курса ----------------
 def course(c):
     r = "../../"
     write(f"assets/img/kursy/{c['slug']}.svg", svg.pipeline(c["pipeline"], c["accent"]))
-    mods = "".join(f'''<details class="mod" {"open" if i==0 else ""}><summary><span class="n">{i+1}</span>{E(t)}</summary><div class="in"><p class="muted">{E(d)}</p><ol>{"".join(f"<li>{E(l)}</li>" for l in ls)}</ol></div></details>''' for i, (t, d, ls) in enumerate(c["modules"]))
+    mods = ""; k = 0
+    for i, (t, d, ls) in enumerate(c["modules"]):
+        lis = ""
+        for l in ls:
+            k += 1
+            if "бесплатный урок" in l:
+                lis += f'<li value="{k}">{E(l.split(" — ")[0])} — <a href="{r}urok/formula-prompta/">бесплатный урок «Формула сильного промпта»</a></li>'
+            else:
+                lis += f'<li value="{k}">{E(l)}</li>'
+        mods += f'''<details class="mod" {"open" if i==0 else ""}><summary><span class="n">{i+1}</span>Модуль {i+1}. {E(t)}</summary><div class="in"><p class="muted">{E(d)}</p><ol>{lis}</ol></div></details>'''
     n_less = sum(len(m[2]) for m in c["modules"])
     others = [x for x in COURSES if x["slug"] != c["slug"]][:3]
+    pilot = c["slug"] == PILOT
+    eyebrow = "Пилотный практикум · первый набор" if pilot else f"Следующая программа · откроем по запросам"
+    status = ("Первый небольшой практикум школы: каждый участник решает с ИИ свою реальную рабочую задачу. Сейчас идёт запись в лист ожидания." if pilot
+              else "Эта программа откроется по запросам. Напишите «СТАРТ» и расскажите, какую задачу хотите решать, — так мы поймём, что открывать следующим.")
     body = f'''<div class="wrap"><p class="crumbs"><a href="{r}">Главная</a> / <a href="{r}kursy/">Курсы</a> / {E(c["title"])}</p>
-<div class="chero"><div><span class="eyebrow">Курс · {c["level"]} · {c["weeks"]} недели</span><h1 style="font-size:clamp(27px,6.4vw,50px)">{E(c["title"])}</h1><p class="lead" style="font-size:18px;color:#cfd0ef">{E(c["short"])}</p>
-<div class="btns"><a class="btn" data-link="pay" data-course="{c["slug"]}" href="#">Купить курс · {rub(c["price"])}</a><a class="btn ghost" href="#programma">Программа</a></div></div>
+<div class="chero"><div><span class="eyebrow">{eyebrow}</span><h1 style="font-size:clamp(27px,6.4vw,50px)">{E(c["title"])}</h1><p class="lead" style="font-size:18px;color:#cfd0ef">{E(c["short"])}</p>
+<p class="muted">{status}</p>
+<div class="btns"><a class="btn tg" data-link="waitlist" href="#">Написать «СТАРТ»</a><a class="btn ghost" href="#programma">Программа</a></div></div>
 <img src="{r}assets/img/{c["img"]}.webp" alt="Иллюстрация к курсу «{E(c["title"])}»" width="1152" height="864"></div></div>
 <section><div class="wrap layout"><div>
+{f'<div class="card" style="border-color:rgba(34,211,238,.45);margin-bottom:34px"><span class="eyebrow" style="margin-bottom:10px">Результат за {c["weeks"]} недели</span><p style="margin:0;font-size:17px">{E(c["result"])}</p></div>' if c.get("result") else ""}
 <h2>Для кого</h2><ul class="check">{"".join(f"<li>{E(x)}</li>" for x in c["for"])}</ul>
 <h2 style="margin-top:40px">Чему вы научитесь</h2><div class="grid g2">{"".join(f'<div class="card"><b class="grad" style="font:700 22px var(--hf)">0{i+1}</b><p style="margin:6px 0 0">{E(x)}</p></div>' for i, x in enumerate(c["outcomes"]))}</div>
 <h2 style="margin-top:40px">Как это работает</h2><img class="pipe" src="{r}assets/img/kursy/{c["slug"]}.svg" alt="Схема: {" → ".join(c["pipeline"])}" loading="lazy">
-<h2 id="programma" style="margin-top:40px">Программа: {len(c["modules"])} модуля</h2><p class="muted">В каждом уроке — видео, текст с пошаговыми картинками, аудио-версия и практическое задание. Здесь — основные уроки, полный курс включает {c["lessons"]} уроков с практикумами{"" if n_less >= c["lessons"] else " и разборами"}.</p>{mods}
+<h2 id="programma" style="margin-top:40px">Программа: {len(c["modules"])} модуля, {n_less} уроков</h2><p class="muted">{"Формат пилота: короткие текстовые уроки, разборы, схемы и практические задания в закрытом Telegram-канале с оглавлением. Аудиоверсия уже есть у бесплатного урока. Всего " + str(n_less) + " уроков." if pilot else "Предварительная программа: состав уроков уточним по запросам тех, кто пишет «СТАРТ». Формат — короткие текстовые уроки, схемы и практические задания."}</p>{mods}
 <h2 style="margin-top:40px">Инструменты курса</h2><div class="tools">{"".join(f'<span class="chip">{E(t)}</span>' for t in c["tools"])}</div><p class="small muted" style="margin-top:10px">Набор инструментов обновляется: если появляется сервис лучше — добавляем урок. Для каждого зарубежного сервиса показываем доступную альтернативу.</p>
-<h2 style="margin-top:40px">Попробуйте бесплатно</h2><div class="card"><p>Не уверены? Пройдите бесплатный урок «Формула сильного промпта» — так устроены все уроки школы.</p><a class="btn sm" href="{r}urok/formula-prompta/">Открыть бесплатный урок →</a></div>
+<h2 style="margin-top:40px">Попробуйте бесплатно</h2><div class="card"><p>Не уверены? Пройдите бесплатный урок «Формула сильного промпта» (урок 5 пилота) — с пошаговыми схемами и аудиоверсией.</p><a class="btn sm" href="{r}urok/formula-prompta/">Открыть бесплатный урок →</a></div>
 </div>
-<aside class="buy"><span class="tag">{c["lessons"]} уроков · {c["weeks"]} нед.</span><div class="big" style="margin:12px 0 4px">{rub(c["price"])}</div><p class="note">Цена предварительная</p>
-<ul class="check small"><li>Видео, текст с картинками и аудио</li><li>Шаблоны и промпты</li><li>Домашние задания</li><li>Обновления 12 месяцев</li><li>Чат участников</li></ul><br>
-<a class="btn block" data-link="pay" data-course="{c["slug"]}" href="#">Купить курс</a><br><a class="btn ghost block" data-link="contact" href="#">Задать вопрос</a>
-<p class="small muted" style="margin:12px 0 0">Оплата через Telegram. Доступ открывается сразу после оплаты.</p></aside></div></section>
-<section><div class="wrap"><h2>Другие курсы</h2><div class="grid g3">{"".join(ccard(x, r) for x in others)}</div></div></section>
+<aside class="buy"><span class="tag">{"🚀 Пилот" if pilot else "⏳ Скоро"} · лист ожидания</span><div style="font:700 22px/1.25 var(--hf);margin:12px 0 8px">{"Запись в пилот открыта" if pilot else "Откроем по запросам"}</div>
+<p class="small" style="color:#7ee8fa;margin:0 0 12px">Курсы сейчас не продаём, предоплату не берём.</p>
+<ol class="funnel small"><li>Пройдите <a href="{r}urok/formula-prompta/">бесплатный урок</a></li><li>Напишите «СТАРТ» в Telegram</li><li>Получите уведомление, когда откроется набор</li></ol>
+<a class="btn tg block" data-link="waitlist" href="#">Написать «СТАРТ»</a><br><a class="btn ghost block" data-link="contact" href="#">Задать вопрос</a>
+<p class="small muted" style="margin:12px 0 0">В ответ спросим: «Какую задачу ты хочешь научиться решать с нейросетью?» — ответы определят первые уроки пилота.</p></aside></div></section>
+{waitlist_block(r) if pilot else waitlist_block(r, "Хотите эту программу? Начните с пилота")}
+<section><div class="wrap"><h2>Другие направления</h2><div class="grid g3">{"".join(ccard(x, r) for x in others)}</div></div></section>
 {lead_block(r)}'''
-    write(f"kursy/{c['slug']}/index.html", page(f"kursy/{c['slug']}/index.html", f"{c['title']} — курс {BRAND}", c["short"], body, r, og=f"assets/img/hero.jpg"))
+    write(f"kursy/{c['slug']}/index.html", page(f"kursy/{c['slug']}/index.html", f"{c['title']} — {'пилотный практикум' if pilot else 'программа'} {BRAND}", c["short"], body, r, og=f"assets/img/hero.jpg"))
 
 # ---------------- Бесплатный урок ----------------
 LESSON_PROMPT = """Ты — опытный SMM-копирайтер кофейни.
@@ -190,7 +236,7 @@ def lesson():
         write(f"assets/img/urok/{name}.svg", fn())
     svg.LS = 1
     P = E(LESSON_PROMPT)
-    body = f'''<div class="wrap"><p class="crumbs"><a href="{r}">Главная</a> / <a href="{r}kursy/s-nulya/">Нейросети с нуля</a> / Бесплатный урок</p></div>
+    body = f'''<div class="wrap"><p class="crumbs"><a href="{r}">Главная</a> / <a href="{r}kursy/s-nulya/">Пилот «Нейросети с нуля»</a> / Бесплатный урок</p></div>
 <section style="padding-top:20px"><div class="wrap lesson">
 <span class="eyebrow">Бесплатный урок · 10 минут</span>
 <h1 style="font-size:clamp(26px,6vw,44px)">Формула сильного промпта: первый пост с ИИ за 10 минут</h1>
@@ -231,8 +277,9 @@ def lesson():
 <h2>Домашнее задание</h2>
 <div class="card"><ol style="margin:0;padding-left:20px"><li>Напишите промпт по формуле Р-З-К-Ф для своего продукта, услуги или блога.</li><li>Получите текст и сделайте 2 уточнения.</li><li>Сравните с ответом на запрос «напиши пост про …» без формулы. Почувствуйте разницу.</li></ol></div>
 
-<div class="lm" style="margin-top:34px"><div><h2>Понравилось? Это 1 из 14 уроков курса «Нейросети с нуля»</h2><p class="muted">Дальше — шаблоны промптов на каждый день, ИИ-репетитор, разбор документов и фото, безопасность данных.</p>
-<div class="btns"><a class="btn" href="{r}kursy/s-nulya/">Смотреть программу курса</a><a class="btn tg" data-link="bot" href="#">Получить ещё 30 промптов</a></div></div>
+<div class="lm" style="margin-top:34px"><div><h2>Понравилось? Следующий шаг — напишите «СТАРТ»</h2><p class="muted">Это урок из пилотного практикума «Нейросети с нуля», где каждый решает с ИИ свою рабочую задачу. Напишите «СТАРТ» в Telegram <a data-link="waitlist" href="#">@GrifRift555</a> — мы сообщим, когда откроется набор. <b style="color:var(--txt)">Предоплату сейчас не берём.</b></p>
+<p class="muted">В ответ мы спросим: <b style="color:var(--txt)">«Какую задачу ты хочешь научиться решать с нейросетью?»</b> Ваши ответы определят первые уроки пилота.</p>
+<div class="btns"><a class="btn tg" data-link="waitlist" href="#">Написать «СТАРТ»</a><a class="btn ghost" href="{r}kursy/s-nulya/">Программа пилота</a><a class="btn ghost" href="{r}gaydy/30-promptov/">Ещё 30 промптов</a></div></div>
 <img src="{r}assets/img/c-nul.webp" alt="Иллюстрация к курсу «Нейросети с нуля»" loading="lazy" style="border-radius:16px"></div>
 </div></section>'''
     write("urok/formula-prompta/index.html", page("urok/formula-prompta/index.html", f"Бесплатный урок: формула сильного промпта — {BRAND}", "Пошаговый бесплатный урок с картинками и аудио: формула Р-З-К-Ф и первый пост с нейросетью за 10 минут.", body, r))
@@ -279,7 +326,7 @@ def guides():
 <div class="btns noprint"><a class="btn" href="../karta-neyrosetey.pdf" download>Скачать PDF</a><a class="btn ghost" href="javascript:print()">Распечатать</a></div>
 {rows}
 <div class="card"><h3>Как выбрать с чего начать</h3><ol style="margin:0;padding-left:20px"><li>Возьмите один универсальный ассистент (ChatGPT, Gemini или GigaChat) и пользуйтесь им каждый день неделю.</li><li>Добавьте один инструмент под вашу главную задачу: картинки, видео или таблицы.</li><li>Только потом — автоматизации и боты.</li></ol></div>
-<div class="card noprint" style="margin-top:18px"><b>Хотите разбор каждого инструмента с видео?</b> Подпишитесь на <a data-link="channel" href="#">Telegram-канал</a> — каждый день новая фишка, или загляните в <a href="{r}kursy/">курсы</a>.</div>
+<div class="card noprint" style="margin-top:18px"><b>Хотите разборы инструментов на примерах?</b> Подпишитесь на <a data-link="channel" href="#">Telegram-канал</a> — каждый день новая фишка, или загляните в <a href="{r}kursy/">курсы</a>.</div>
 </div></section>'''
     write("gaydy/karta-neyrosetey/index.html", page("gaydy/karta-neyrosetey/index.html", f"Карта нейросетей 2026 — бесплатный гайд {BRAND}", "Шпаргалка: 35+ нейросетей по задачам — тексты, картинки, видео, голос, таблицы, боты. Скачайте PDF бесплатно.", body, r, mbar=False))
     n = 0; ph = ""

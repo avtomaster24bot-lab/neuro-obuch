@@ -1,28 +1,17 @@
 (function(){
   var C = window.NO_CONFIG || {};
-  var isPh = function(u){ return !u || /REPLACE/.test(u); };
-  function toast(msg){
-    var t=document.getElementById('toast');
-    if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t);}
-    t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('show')},3200);
-  }
-  function resolve(kind, course){
+  function resolve(kind){
     if(kind==='channel') return C.TELEGRAM_CHANNEL_URL;
-    if(kind==='bot') return C.TELEGRAM_BOT_URL;
+    if(kind==='waitlist') return C.WAITLIST_URL;
     if(kind==='contact') return C.CONTACT_URL;
-    if(kind==='pay'){ var p=C.PAY||{}; return (course&&p[course])||p['default']; }
     var soc={youtube:'YOUTUBE_URL',instagram:'INSTAGRAM_URL',tiktok:'TIKTOK_URL',vk:'VK_URL'};
     if(soc[kind]) return C[soc[kind]];
     return '';
   }
   document.querySelectorAll('[data-link]').forEach(function(a){
-    var kind=a.getAttribute('data-link'), url=resolve(kind,a.getAttribute('data-course'));
-    if(a.hasAttribute('data-social')){ if(!url){a.remove();return;} }
-    if(isPh(url)){
-      a.setAttribute('href','#');
-      a.addEventListener('click',function(e){e.preventDefault();
-        toast(kind==='pay'?'Оплата подключается — напишите нам в Telegram, и мы забронируем место.':'Telegram-канал запускается — ссылка появится здесь совсем скоро.');});
-    } else { a.setAttribute('href',url); a.setAttribute('target','_blank'); a.setAttribute('rel','noopener'); }
+    var url=resolve(a.getAttribute('data-link'));
+    if(!url){ if(a.hasAttribute('data-social')) a.remove(); return; }
+    a.setAttribute('href',url); a.setAttribute('target','_blank'); a.setAttribute('rel','noopener');
   });
   document.querySelectorAll('[data-keyword]').forEach(function(el){ el.textContent=C.KEYWORD||'ИИ'; });
 
