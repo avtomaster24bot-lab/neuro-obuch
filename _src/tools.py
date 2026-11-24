@@ -21,7 +21,7 @@ def pdf():
 
 def shots(base, out):
     os.makedirs(out, exist_ok=True)
-    pages = {"home": "", "kurs-biznes": "kursy/biznes/", "urok": "urok/formula-prompta/", "katalog": "kursy/", "novoe": "novoe/"}
+    pages = {"home": "", "kurs-s-nulya": "kursy/s-nulya/", "kurs-biznes": "kursy/biznes/", "urok": "urok/formula-prompta/", "katalog": "kursy/", "novoe": "novoe/"}
     with sync_playwright() as p:
         b = p.chromium.launch()
         m = b.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
@@ -30,7 +30,7 @@ def shots(base, out):
             for pg, tag in [(m, "mobile"), (d, "desktop")]:
                 pg.goto(base + u, wait_until="networkidle"); pg.wait_for_timeout(800)
                 pg.add_style_tag(content='.reveal{opacity:1!important;transform:none!important;transition:none!important}'); pg.evaluate("document.querySelectorAll('img[loading=lazy]').forEach(i=>i.loading='eager')"); pg.wait_for_timeout(1500)
-                pg.screenshot(path=f"{out}/{k}-{tag}.png", full_page=(tag == "mobile" and k in ("home", "urok")) or tag == "desktop")
+                pg.screenshot(path=f"{out}/{k}-{tag}.png", full_page=(tag == "mobile" and k in ("home", "urok", "kurs-s-nulya", "katalog")) or tag == "desktop")
                 pg.screenshot(path=f"{out}/{k}-{tag}-top.png") if tag == "mobile" else None
         sw = m.evaluate("document.documentElement.scrollWidth"); print("mobile scrollWidth", sw)
         b.close()
