@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from data import BRAND, TAGLINE, BASE_URL, COURSES, FAQ
 import svg
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-V = "6"
+V = "7"
 E = html.escape
 
 
@@ -117,7 +117,7 @@ def home():
 <div class="chips"><span class="chip">✍️ Тексты</span><span class="chip">🎨 Картинки</span><span class="chip">🎬 Видео</span><span class="chip">🎙️ Голос</span><span class="chip">📊 Учёт и таблицы</span><span class="chip">🤖 ИИ-боты</span></div>
 <div class="btns"><a class="btn" href="urok/formula-prompta/">Пройти бесплатный урок</a><a class="btn tg" data-link="waitlist" href="#">Написать «СТАРТ»</a></div>
 <p class="small muted" style="margin:14px 0 0">Сейчас идёт запись в лист ожидания пилота. Предоплату не берём.</p>
-<div class="stats"><div class="stat"><b>7</b><span>направлений обучения</span></div><div class="stat"><b>120+</b><span>уроков в программах</span></div><div class="stat"><b>ежедневно</b><span>новые возможности ИИ</span></div></div>
+<div class="stats"><div class="stat"><b>14</b><span>уроков в пилоте за 2 недели</span></div><div class="stat"><b>1</b><span>своя рабочая задача — решаете с ИИ</span></div><div class="stat"><b>7</b><span>направлений обучения</span></div></div>
 </div>
 <div class="hero-img"><img src="assets/img/hero.webp" alt="Нейросеть над ноутбуком: текст, картинки, видео, звук и таблицы" width="1280" height="720" fetchpriority="high"></div>
 </div></section>
